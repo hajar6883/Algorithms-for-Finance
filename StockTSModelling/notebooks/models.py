@@ -30,16 +30,18 @@ class LSTMModel(nn.Module):
 
 
 class attentional_LSTM(nn.Module):
-    def __init__(self, input_size=1, hidden_size=64, num_layers=2, output_size=1, bidirectional=False):
+    def __init__(self, input_size=1, hidden_size=64, num_layers=2, output_size=1,attention_size= 1, bidirectional=False):
         super(attentional_LSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.bidirectional = bidirectional
+        self.attention_size = attention_size
+
 
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True, bidirectional=bidirectional)
         #attention layer
-        self.attention = nn.Linear(hidden_size * (2 if bidirectional else 1), 1)
-
+        self.attention = nn.Linear(hidden_size * (2 if bidirectional else 1), attention_size)
+        self.attention_score = nn.Linear(attention_size, 1)
 
         fc_input_size = hidden_size * 2 if bidirectional else hidden_size
         self.fc = nn.Linear(fc_input_size, output_size)
@@ -52,8 +54,11 @@ class attentional_LSTM(nn.Module):
 
         out, _ = self.lstm(x, (h0, c0)) #lstm_output : (batch, seq_len, hidden_size)
         #add learnable attention coeffs
-        attn_scores = self.attention(out) # (batch, seq_len, 1)
-        attn_weights = torch.softmax(attn_scores, dim=1) 
+
+        attn_inter = torch.tanh(self.attention(out))  # Transform hidden states (batch, seq_len, attention_size)
+        attn_scores = self.attention_score(attn_inter) # (batch, seq_len, 1)
+        attn_weights = torch.softmax(attn_scores, dim=1) #normlise across time steps
+
         context_vector = torch.sum(attn_weights * out, dim=1)  # (batch, hidden_size)
 
         output = self.fc(context_vector)
