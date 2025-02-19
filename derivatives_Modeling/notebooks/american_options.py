@@ -50,9 +50,40 @@ def Stochastic_Mesh_american_option(): #alternative to regression
 
     pass
 
-def Binomial_Tree_american_option(): 
+def Binomial_Tree_american_option(S0, K, T, r, sigma, N, option_type='call'): 
+    """
 
-    pass
+    
+    u : up factor (%)
+    d : down factor 
+    """
+    dt = T / N  
+    u = np.exp(sigma * np.sqrt(dt)) 
+    d = 1 / u  
+    p = (np.exp(r * dt) - d) / (u - d)  # Risk-neutral probability
+
+    # stock price tree
+    stock_tree = np.zeros((N+1, N+1))
+    for i in range(N+1):
+        for j in range(i+1):
+            stock_tree[j, i] = S0 * (u ** (i-j)) * (d ** j)
+
+    # values at maturity
+    option_tree = np.zeros((N+1, N+1))
+    if option_type == "call":
+        option_tree[:, -1] = np.maximum(stock_tree[:, -1] - K, 0)
+    elif option_type == "put":
+        option_tree[:, -1] = np.maximum(K - stock_tree[:, -1], 0)
+
+    # go backward to get option price at t=0
+    for i in range(N-1, -1, -1):
+        for j in range(i+1):
+            option_tree[j, i] = np.exp(-r * dt) * (p * option_tree[j, i+1] + (1 - p) * option_tree[j+1, i+1])
+
+    return option_tree[0, 0]
+
+
+    
 def Finite_Difference(): #solve PDE numerically then use a finite difference grid to approximate
 
     pass
