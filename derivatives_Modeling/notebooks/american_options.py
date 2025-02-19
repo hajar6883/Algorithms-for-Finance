@@ -50,7 +50,7 @@ def Stochastic_Mesh_american_option(): #alternative to regression
 
     pass
 
-def Binomial_Tree_american_option(S0, K, T, r, sigma, N, option_type='call'): 
+def Binomial_Tree_american_option(S0, K, T, r, sigma, N=5, option_type='call'): 
     """
 
     
@@ -80,7 +80,7 @@ def Binomial_Tree_american_option(S0, K, T, r, sigma, N, option_type='call'):
         for j in range(i+1):
             option_tree[j, i] = np.exp(-r * dt) * (p * option_tree[j, i+1] + (1 - p) * option_tree[j+1, i+1])
 
-    return option_tree[0, 0]
+    return stock_tree, option_tree
 
 
     
