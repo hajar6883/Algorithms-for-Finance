@@ -1,0 +1,82 @@
+[I 2025-02-15 21:35:38,802] A new study created in memory with name: no-name-ca65efda-64ec-4516-946e-e1276cdfaedb
+Epoch 10/100, Loss: 0.000177
+Epoch 20/100, Loss: 0.000160
+Epoch 30/100, Loss: 0.000157
+Epoch 40/100, Loss: 0.000123
+Epoch 50/100, Loss: 0.000076
+Epoch 60/100, Loss: 0.000063
+Epoch 70/100, Loss: 0.000048
+Epoch 80/100, Loss: 0.000031
+Epoch 90/100, Loss: 0.000028
+[I 2025-02-15 21:38:59,871] Trial 0 finished with value: 0.029722586274147034 and parameters: {'hidden_size': 64, 'num_layers': 4, 'attention_size': 8, 'bidirectional': False, 'learning_rate': 0.00031064326612545743, 'batch_size': 32, 'epochs': 100}. Best is trial 0 with value: 0.029722586274147034.
+Epoch 100/100, Loss: 0.000026
+Epoch 10/100, Loss: 0.000159
+Epoch 20/100, Loss: 0.000169
+Epoch 30/100, Loss: 0.000166
+Epoch 40/100, Loss: 0.000153
+Epoch 50/100, Loss: 0.000150
+Epoch 60/100, Loss: 0.000143
+Epoch 70/100, Loss: 0.000156
+Epoch 80/100, Loss: 0.000124
+Epoch 90/100, Loss: 0.000122
+[I 2025-02-15 21:40:49,339] Trial 1 finished with value: 0.04824149236083031 and parameters: {'hidden_size': 32, 'num_layers': 3, 'attention_size': 16, 'bidirectional': False, 'learning_rate': 0.00023914286527310923, 'batch_size': 32, 'epochs': 100}. Best is trial 0 with value: 0.029722586274147034.
+Epoch 100/100, Loss: 0.000101
+Epoch 10/100, Loss: 0.000153
+Epoch 20/100, Loss: 0.000151
+Epoch 30/100, Loss: 0.000052
+Epoch 40/100, Loss: 0.000049
+Epoch 50/100, Loss: 0.000021
+Epoch 60/100, Loss: 0.000019
+Epoch 70/100, Loss: 0.000032
+Epoch 80/100, Loss: 0.000017
+Epoch 90/100, Loss: 0.000016
+[I 2025-02-15 21:42:55,635] Trial 2 finished with value: 0.0052254050970077515 and parameters: {'hidden_size': 64, 'num_layers': 3, 'attention_size': 32, 'bidirectional': False, 'learning_rate': 0.0012627784340929209, 'batch_size': 64, 'epochs': 100}. Best is trial 2 with value: 0.0052254050970077515.
+Epoch 100/100, Loss: 0.000014
+Epoch 10/100, Loss: 0.000025
+Epoch 20/100, Loss: 0.000012
+Epoch 30/100, Loss: 0.000013
+Epoch 40/100, Loss: 0.000010
+Epoch 50/100, Loss: 0.000012
+Epoch 60/100, Loss: 0.000011
+Epoch 70/100, Loss: 0.000009
+Epoch 80/100, Loss: 0.000009
+Epoch 90/100, Loss: 0.000012
+[I 2025-02-15 21:44:45,275] Trial 3 finished with value: 0.00044981177779845893 and parameters: {'hidden_size': 64, 'num_layers': 1, 'attention_size': 8, 'bidirectional': True, 'learning_rate': 0.003208081971147564, 'batch_size': 32, 'epochs': 100}. Best is trial 3 with value: 0.00044981177779845893.
+Epoch 100/100, Loss: 0.000010
+Epoch 10/100, Loss: 0.000112
+Epoch 20/100, Loss: 0.000030
+Epoch 30/100, Loss: 0.000019
+Epoch 40/100, Loss: 0.000016
+Epoch 50/100, Loss: 0.000020
+Epoch 60/100, Loss: 0.000013
+Epoch 70/100, Loss: 0.000012
+Epoch 80/100, Loss: 0.000015
+Epoch 90/100, Loss: 0.000010
+[I 2025-02-15 21:49:00,490] Trial 4 finished with value: 0.017861586064100266 and parameters: {'hidden_size': 32, 'num_layers': 2, 'attention_size': 8, 'bidirectional': True, 'learning_rate': 0.0003967467457717472, 'batch_size': 16, 'epochs': 100}. Best is trial 3 with value: 0.00044981177779845893.
+Epoch 100/100, Loss: 0.000010
+Epoch 10/50, Loss: 0.000209
+Epoch 20/50, Loss: 0.000172
+Epoch 30/50, Loss: 0.000162
+Epoch 40/50, Loss: 0.000156
+[I 2025-02-15 21:49:55,723] Trial 5 finished with value: 0.05983230844140053 and parameters: {'hidden_size': 32, 'num_layers': 3, 'attention_size': 32, 'bidirectional': False, 'learning_rate': 0.0004492385385053113, 'batch_size': 32, 'epochs': 50}. Best is trial 3 with value: 0.00044981177779845893.
+Epoch 50/50, Loss: 0.000110
+Epoch 10/50, Loss: 0.000020
+Epoch 20/50, Loss: 0.000014
+Epoch 30/50, Loss: 0.000010
+Epoch 40/50, Loss: 0.000016
+[I 2025-02-15 21:50:34,082] Trial 6 finished with value: 0.0014957782113924623 and parameters: {'hidden_size': 32, 'num_layers': 1, 'attention_size': 32, 'bidirectional': True, 'learning_rate': 0.0028457100507941722, 'batch_size': 32, 'epochs': 50}. Best is trial 3 with value: 0.00044981177779845893.
+Epoch 50/50, Loss: 0.000010
+Epoch 10/200, Loss: 0.000123
+Epoch 20/200, Loss: 0.000038
+[W 2025-02-15 21:56:54,271] Trial 7 failed with parameters: {'hidden_size': 256, 'num_layers': 4, 'attention_size': 32, 'bidirectional': True, 'learning_rate': 0.0030193481900229763, 'batch_size': 64, 'epochs': 200} because of the following error: KeyboardInterrupt().
+Traceback (most recent call last):
+  File "/Users/grace/miniconda3/envs/tf/lib/python3.10/site-packages/optuna/study/_optimize.py", line 197, in _run_trial
+    value_or_values = func(trial)
+  File "/var/folders/cw/0t2jzw0d1dg1rj3qj57z9_qh0000gn/T/ipykernel_42284/2683035344.py", line 31, in objective
+    loss.backward()
+  File "/Users/grace/miniconda3/envs/tf/lib/python3.10/site-packages/torch/_tensor.py", line 492, in backward
+    torch.autograd.backward(
+  File "/Users/grace/miniconda3/envs/tf/lib/python3.10/site-packages/torch/autograd/__init__.py", line 251, in backward
+    Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+KeyboardInterrupt
+[W 2025-02-15 21:56:54,277] Trial 7 failed with value None.
