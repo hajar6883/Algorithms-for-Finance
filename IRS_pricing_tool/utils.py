@@ -10,10 +10,6 @@ import plotly.graph_objects as go
 
 
 
-# Market Data Handling
-# 
-
-
 class YieldCurve:
     def __init__(self, start_date="2020-01-01", end_date=None):
     
@@ -30,21 +26,21 @@ class YieldCurve:
 
         data = web.DataReader(self.maturities, self.source, self.start_date, self.end_date)
         data.dropna(inplace=True)
-        return data
     
-    def get_latest_yields(self):
-        """Extracts the most recent yield data and converts maturities to years."""
-        latest_yields = self.data.iloc[-1].to_dict() 
+   
+        latest_yields = data.iloc[-1].to_dict() 
 
-        # Convert FRED's maturity names to numerical years
         maturity_mapping = {
             'DGS1MO': 1/12, 'DGS3MO': 3/12, 'DGS6MO': 6/12, 'DGS1': 1,
             'DGS2': 2, 'DGS3': 3, 'DGS5': 5, 'DGS7': 7, 'DGS10': 10, 'DGS20': 20, 'DGS30': 30
         }
 
-        market_yields = {maturity_mapping[k]: v for k, v in latest_yields.items() if k in maturity_mapping}
-        maturities = sorted(market_yields.keys()) 
-        return market_yields, maturities
+        market_yields = {maturity_mapping[k]: v/100 for k, v in latest_yields.items() if k in maturity_mapping}
+        print("\nMarket Yields (Par Rates from FRED):")
+        for m, y in market_yields.items():
+            print(f"{m} years: {y:.4%}")
+        # maturities = sorted(market_yields.keys()) 
+        return market_yields
 
     def plot_yield_curve(self, date=None):
         """Plots the yield curve for a specific date (default is the latest available)."""
@@ -89,9 +85,9 @@ class YieldCurve:
 
     
   
-def bootstrap_zero_curve( market_yields, maturities, compounding= 'semi-annual',   day_count=360):
+def Zero_Curve( market_yields, compounding= 'semi-annual'): # for than need bootstrapping..
 
-        """construv-ct a zero-coupon curve from the prices of coupon-bearing products (Bonds and Swaps)"""
+        """construct a zero-coupon curve from PAR-like rates  (prices of coupon-bearing products)"""
 
         compounding_map = {
         'annual': 1,
@@ -101,55 +97,81 @@ def bootstrap_zero_curve( market_yields, maturities, compounding= 'semi-annual',
         'continuous': None  
         }
         
-        freq = compounding_map.get(compounding)  
-        
-        n = len(maturities)
+        freq = compounding_map.get(compounding, 2)  
 
-        zero_rates = np.zeros(n)  
-        zero_rates[0] = market_yields[maturities[0]] /100 # get first two spot rates directly from market yield since a 6month, and 1 y TBill is zero_coupon 
-        zero_rates[1] = market_yields[maturities[1]] /100
+        maturities = sorted(market_yields.keys())
+        zero_rates = {}  
 
+        first_maturity = maturities[0] # shortest maturity is assumed to be a zero-coupon bond (Tbill)
+        zero_rates[first_maturity] = market_yields[first_maturity]
+            
         # Bootstrapping logic
-        for i in range(2, n):  
-            maturity = maturities[i]
 
-            # P = market_prices[maturity]
-            P = 100 
-            C = market_yields[maturities[3]] /100 # Coupon rate = market yield (since bond is at par)
-            if compounding == 'continuous':
-                discounted_coupons = sum(
-                    (C / freq) * np.exp(-zero_rates[j] * maturities[j]) for j in range(i)
-                )
-                zero_rates[i] = (-1 / maturity) * np.log((100 - discounted_coupons) / 100)
+        for i in range(1, len(maturities)):
+            T = maturities[i]
+            C = market_yields[T]  # Par yield (coupon rate)
+            P = 100  # Par bond price
 
-            else: 
-                discounted_coupons = sum((C / freq) / (1 + zero_rates[j] / freq) ** (maturities[j] * freq) for j in range(i))
-                # solve current unknown zero_rate Z_i
-                zero_rates[i] = ((100 + 1) / (P - discounted_coupons)) ** (1 / maturity) - 1
+            discounted_coupons = sum((C / freq) / (1 + zero_rates[m] / freq) ** (m * freq) for m in maturities[:i])
+            zero_rates[T] = ((P + (C / freq)) / (P - discounted_coupons)) ** (1 / (T * freq)) - 1
 
-        return dict(zip(maturities, zero_rates))
-                
+            
+
+        return zero_rates
+
+
+def Instantaneous_Forward_Rate(StDate, Tenor, curr,data,TrDate= datetime.date.today()):
+    """interpolation to estimate discount factors at specific times"""
+
+    if isinstance(StDate, pd.Timestamp):
+        StDate = StDate.date()
+    if isinstance(TrDate, pd.Timestamp):
+        TrDate = TrDate.date()
+  
+
+    T1 = ((StDate - TrDate).days)/365
+    T2 = T1 + Tenor
+    dfTable = data[data.Currency == curr]
+    return (np.interp(T1,dfTable['T'], dfTable['Df']) - np.interp(T2,dfTable['T'], dfTable['Df']))/((T2-T1)*np.interp(T2,dfTable['T'], dfTable['Df']))
+
+
+
+def Forward_Curve(maturities, zero_rates, delta_T, compounding='discrete'):
+    """ derive forward rates from spot rates"""
+    n = len(maturities)
+    forward_rates = np.zeros(n - delta_T)  
+
+    if compounding == 'continuous':
+        for t in range(n - delta_T):
+            T1 = maturities[t]
+            T2 = maturities[t + delta_T]
+            forward_rates[t] = (zero_rates[t + delta_T] * T2 - zero_rates[t] * T1) / (T2 - T1)
+    
+    else : 
+        for t in range(n - delta_T):
+            T1 = maturities[t]
+            T2 = maturities[t + delta_T]
+            forward_rates[t] = ((1 + zero_rates[t + delta_T]) ** T2 / (1 + zero_rates[t]) ** T1) ** (1 / (T2 - T1)) - 1
+
+    return dict(zip(maturities[:-delta_T], forward_rates))
+
+
+
+
+# def get_discout_factor(spot_rates, maturities):
+#     return [1 / ((1 + rate) ** t) for rate, t in zip(spot_rates, maturities)]
+
+
+
+
     
 
 
 
 
-def get_discout_factor(spot_rates, maturities):
-    return [1 / ((1 + rate) ** t) for rate, t in zip(spot_rates, maturities)]
 
-
-def get_forward_rates(spot_curve):
-    pass
-
-
-    
-
-
-
-
-
-    """
-    fixed_leg_cashflows(notional, fixed_rate, payment_dates, day_count_convention)
+"""
+fixed_leg_cashflows(notional, fixed_rate, payment_dates, day_count_convention)
 floating_leg_cashflows(notional, floating_index, reset_dates, forward_curve, day_count_convention)	
 discount_cashflows(cashflows, discount_factors)
 
@@ -158,7 +180,8 @@ calculate_par_swap_rate(discount_factors, floating_leg_dates, fixed_leg_dates)
 calculate_DV01(fixed_leg, discount_factors)
 #sensitivities:
 
-calculate_PV01(fixed_leg, discount_factors)	Computes PV01 (the price value of a 1 basis point change in rates).
+calculate_PV01(fi
+xed_leg, discount_factors)	Computes PV01 (the price value of a 1 basis point change in rates).
 compute_IR_Delta(swap_price, shocked_rates)	Computes interest rate delta (how swap value changes with rates).
 calculate_convexity_adjustment()
 
@@ -188,20 +211,17 @@ def main():
 
 
     yc = YieldCurve()
-    # yc.data=yc.fetch_yield_curve(start_date="2020-01-01")
-    # yc.plot_yield_curve()  
-    # yc.plot_time_series() 
-    market_yields, maturities = yc.get_latest_yields()
+    market_yields= yc.data
 
-    print("\nMarket Yields (Latest FRED Data):")
-    for m, y in market_yields.items():
-        print(f"{m} years: {y:.2f}%")
+    zero_curve =Zero_Curve(market_yields)
 
-    zero_curve = bootstrap_zero_curve(market_yields, maturities)
-
-    print("\nComputed Zero Curve:")
+    print("\nBootstrapped Zero Curve (From Par Rates):")
     for m, z in zero_curve.items():
         print(f"{m} years: {z:.4%}")
+
+    
+
+    
 
 if __name__ == "__main__":
     main()
