@@ -23,8 +23,7 @@ class YieldCurve:
         self.end_date = end_date if end_date else datetime.datetime.today().strftime("%Y-%m-%d")
 
         self.data = self.fetch_yield_curve()
-        # self.coupon= 0
-        # self.market_prices = []
+    
 
     def fetch_yield_curve(self):
         """get treasury rate for fixed maturity bonds (rates are market-implied )"""
@@ -32,6 +31,20 @@ class YieldCurve:
         data = web.DataReader(self.maturities, self.source, self.start_date, self.end_date)
         data.dropna(inplace=True)
         return data
+    
+    def get_latest_yields(self):
+        """Extracts the most recent yield data and converts maturities to years."""
+        latest_yields = self.data.iloc[-1].to_dict() 
+
+        # Convert FRED's maturity names to numerical years
+        maturity_mapping = {
+            'DGS1MO': 1/12, 'DGS3MO': 3/12, 'DGS6MO': 6/12, 'DGS1': 1,
+            'DGS2': 2, 'DGS3': 3, 'DGS5': 5, 'DGS7': 7, 'DGS10': 10, 'DGS20': 20, 'DGS30': 30
+        }
+
+        market_yields = {maturity_mapping[k]: v for k, v in latest_yields.items() if k in maturity_mapping}
+        maturities = sorted(market_yields.keys()) 
+        return market_yields, maturities
 
     def plot_yield_curve(self, date=None):
         """Plots the yield curve for a specific date (default is the latest available)."""
@@ -74,34 +87,48 @@ class YieldCurve:
 
         fig.show()
 
-    def bootstrap_zero_curve(self, market_yields, maturities, market_prices, coupon=0, day_count=360, compounding='annual'):
+    
+  
+def bootstrap_zero_curve( market_yields, maturities, compounding= 'semi-annual',   day_count=360):
+
+        """construv-ct a zero-coupon curve from the prices of coupon-bearing products (Bonds and Swaps)"""
+
+        compounding_map = {
+        'annual': 1,
+        'semi-annual': 2,
+        'quarterly': 4,
+        'monthly': 12,
+        'continuous': None  
+        }
+        
+        freq = compounding_map.get(compounding)  
+        
         n = len(maturities)
 
         zero_rates = np.zeros(n)  
-        zero_rates[0] = market_yields[maturities[0]] / 100  # First zero rate directly from market yield since a 6month TBill is zero_coupon
+        zero_rates[0] = market_yields[maturities[0]] /100 # get first two spot rates directly from market yield since a 6month, and 1 y TBill is zero_coupon 
+        zero_rates[1] = market_yields[maturities[1]] /100
 
         # Bootstrapping logic
-        for i in range(1, n):  # Start from the second maturity
+        for i in range(2, n):  
             maturity = maturities[i]
-            if maturity not in market_yields or maturity not in market_prices:
-                raise ValueError(f"Missing data for maturity {maturity}")
-            
-            P = market_prices[maturity]
-            if P <= 0:
-                raise ValueError(f"Invalid market price {P} for maturity {maturity}")
 
+            # P = market_prices[maturity]
+            P = 100 
+            C = market_yields[maturities[3]] /100 # Coupon rate = market yield (since bond is at par)
+            if compounding == 'continuous':
+                discounted_coupons = sum(
+                    (C / freq) * np.exp(-zero_rates[j] * maturities[j]) for j in range(i)
+                )
+                zero_rates[i] = (-1 / maturity) * np.log((100 - discounted_coupons) / 100)
 
-
-
-            discounted_coupons = sum(coupon / (1 + zero_rates[j]) ** maturities[j] for j in range(i))
-
-            # solve current zero_rate us
-            zero_rates[i] = ((100 + coupon) / (P - discounted_coupons)) ** (1 / maturity) - 1
+            else: 
+                discounted_coupons = sum((C / freq) / (1 + zero_rates[j] / freq) ** (maturities[j] * freq) for j in range(i))
+                # solve current unknown zero_rate Z_i
+                zero_rates[i] = ((100 + 1) / (P - discounted_coupons)) ** (1 / maturity) - 1
 
         return dict(zip(maturities, zero_rates))
                 
-  
-
     
 
 
@@ -144,6 +171,7 @@ generate_swap_report(swap_details, npv, risk_metrics)
 
 
 
+
 def main():
     # parser = argparse.ArgumentParser(description="Run different functions for the swap pricing tool.")
     
@@ -163,16 +191,17 @@ def main():
     # yc.data=yc.fetch_yield_curve(start_date="2020-01-01")
     # yc.plot_yield_curve()  
     # yc.plot_time_series() 
-    market_yields = {0.5: 2.0, 1: 2.5, 2: 3.0}  
-    maturities = [0.5, 1, 2]  
-    market_prices = {0.5: 99.00, 1: 98.50, 2: 97.00}  
+    market_yields, maturities = yc.get_latest_yields()
 
+    print("\nMarket Yields (Latest FRED Data):")
+    for m, y in market_yields.items():
+        print(f"{m} years: {y:.2f}%")
 
-    zero_curve = yc.bootstrap_zero_curve(market_yields, maturities, market_prices, coupon=2.5)
+    zero_curve = bootstrap_zero_curve(market_yields, maturities)
 
     print("\nComputed Zero Curve:")
     for m, z in zero_curve.items():
-        print(f"{m} years: {z:.4%}") 
+        print(f"{m} years: {z:.4%}")
 
 if __name__ == "__main__":
     main()
