@@ -1,11 +1,12 @@
 import pandas as pd
 import numpy as np
 import pandas_datareader.data as web
-import datetime
+import datetime as dt
 import argparse
 import plotly
 import plotly.graph_objects as go
-
+import ace as tools
+from scipy.interpolate import interp1d
 
 
 
@@ -16,7 +17,7 @@ class YieldCurve:
         self.maturities = ['DGS1MO', 'DGS3MO', 'DGS6MO', 'DGS1', 'DGS2', 'DGS3', 'DGS5', 'DGS7', 'DGS10', 'DGS20', 'DGS30']
         self.source = 'fred'
         self.start_date = start_date
-        self.end_date = end_date if end_date else datetime.datetime.today().strftime("%Y-%m-%d")
+        self.end_date = end_date if end_date else dt.datetime.today().strftime("%Y-%m-%d")
 
         self.data = self.fetch_yield_curve()
     
@@ -120,8 +121,8 @@ def Zero_Curve( market_yields, compounding= 'semi-annual'): # for than need boot
         return zero_rates
 
 
-def Instantaneous_Forward_Rate(StDate, Tenor, curr,data,TrDate= datetime.date.today()):
-    """interpolation to estimate discount factors at specific times"""
+def Instantaneous_Forward_Rate(StDate, Tenor, Discounted_Yields, Time_to_maturity,TrDate= dt.date.today()):
+    """interpolation to estimate forward rates at specific times"""
 
     if isinstance(StDate, pd.Timestamp):
         StDate = StDate.date()
@@ -131,8 +132,27 @@ def Instantaneous_Forward_Rate(StDate, Tenor, curr,data,TrDate= datetime.date.to
 
     T1 = ((StDate - TrDate).days)/365
     T2 = T1 + Tenor
-    dfTable = data[data.Currency == curr]
-    return (np.interp(T1,dfTable['T'], dfTable['Df']) - np.interp(T2,dfTable['T'], dfTable['Df']))/((T2-T1)*np.interp(T2,dfTable['T'], dfTable['Df']))
+    # Ensure T1 and T2 are within the valid range of Time_to_maturity
+    T_min, T_max = min(Time_to_maturity), max(Time_to_maturity)
+    T1 = max(T_min, min(T1, T_max))
+    T2 = max(T_min, min(T2, T_max))
+
+    # Ensure T1 is not negative (floating rate resets cannot be in the past)
+    T1 = max(0, T1)
+
+    interp_df = interp1d(Time_to_maturity, Discounted_Yields, kind='linear', fill_value="extrapolate")
+
+    # Compute interpolated discount factors
+    Df_T1 = interp_df(T1)
+    Df_T2 = interp_df(T2)
+
+    # Compute forward rate
+    fwd_rate = (Df_T1 - Df_T2) / ((T2 - T1) * Df_T2)
+    if fwd_rate > 1: 
+        fwd_rate /= 100
+    
+    # return (np.interp(T1, Time_to_maturity, Discounted_Yields) - np.interp(T2, Time_to_maturity, Discounted_Yields)) / ((T2 - T1) * np.interp(T2, Time_to_maturity, Discounted_Yields))
+    return fwd_rate
 
 
 
@@ -154,6 +174,70 @@ def Forward_Curve(maturities, zero_rates, delta_T, compounding='discrete'):
             forward_rates[t] = ((1 + zero_rates[t + delta_T]) ** T2 / (1 + zero_rates[t]) ** T1) ** (1 / (T2 - T1)) - 1
 
     return dict(zip(maturities[:-delta_T], forward_rates))
+
+
+def compute_day_count_fraction(start_date, end_date, day_count_convention="30/360"):
+
+    if day_count_convention == "30/360":
+        return ((end_date.year - start_date.year) * 360 + 
+                (end_date.month - start_date.month) * 30 + 
+                (end_date.day - start_date.day)) / 360
+    elif day_count_convention == "Actual/360":
+        return (end_date - start_date).days / 360
+    else:
+        raise ValueError("Unsupported day count convention")
+
+
+def fixedLegCashflows(notional, fixed_rate, payment_dates, day_count_convention= "30/360"):
+    cashflows = []
+    for i in range(1, len(payment_dates)):  
+        start_date = payment_dates[i-1]
+        end_date = payment_dates[i]
+
+        day_count_fraction = compute_day_count_fraction(start_date, end_date, day_count_convention)
+
+    
+        cashflow = notional * fixed_rate * day_count_fraction
+        cashflows.append({"Payment Date": end_date, "Fixed Cashflow": cashflow}) #same cashflow until notional or rate is changed!
+
+    return pd.DataFrame(cashflows)
+
+
+
+def floatingLegCashflows(notional, zero_curve, reset_dates,floating_spread=0.0 ,day_count_convention="30/360"):
+
+    cashflows = []
+
+    time_to_maturity = zero_curve["T"]
+    forward_rates = zero_curve["Forward Rate"]
+    
+    interp_fwd = interp1d(time_to_maturity, forward_rates, kind="linear", fill_value="extrapolate")
+
+    for i in range(1, len(reset_dates)):
+        start_date = reset_dates[i-1]
+        end_date = reset_dates[i]
+
+        day_count_fraction = compute_day_count_fraction(start_date, end_date, day_count_convention)
+
+        T1 = (start_date - dt.date.today()).days / 365
+        print("T1:", T1)
+
+        # Ensure T1 is within valid interpolation range
+        T_min, T_max = min(time_to_maturity), max(time_to_maturity)
+        T1 = max(T_min, min(T1, T_max))
+
+        forward_rate = interp_fwd(T1) / 100  
+        print("Interpolated Forward Rate:", forward_rate)
+        floating_rate = forward_rate + floating_spread  
+        cashflow = notional * floating_rate * day_count_fraction
+        print("Computed Cashflow:", cashflow)
+
+      
+        cashflows.append({"Payment Date": end_date, "Floating Cashflow": cashflow, "Forward Rate": forward_rate})
+
+    return pd.DataFrame(cashflows)
+    
+
 
 
 
@@ -210,14 +294,21 @@ def main():
     
 
 
-    yc = YieldCurve()
-    market_yields= yc.data
+    # yc = YieldCurve()
+    # market_yields= yc.data
 
-    zero_curve =Zero_Curve(market_yields)
+    # zero_curve =Zero_Curve(market_yields)
 
-    print("\nBootstrapped Zero Curve (From Par Rates):")
-    for m, z in zero_curve.items():
-        print(f"{m} years: {z:.4%}")
+    # print("\nBootstrapped Zero Curve (From Par Rates):")
+    # for m, z in zero_curve.items():
+    #     print(f"{m} years: {z:.4%}")
+
+
+    return
+
+    
+
+
 
     
 
