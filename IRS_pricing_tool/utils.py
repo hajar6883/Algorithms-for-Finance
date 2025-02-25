@@ -10,79 +10,85 @@ from scipy.interpolate import interp1d
 
 
 
+COMPOUNDING_MAP = {
+    'annual': 1,
+    'semi-annual': 2,
+    'quarterly': 4,
+    'monthly': 12,
+    'continuous': None}
 
-class YieldCurve:
-    def __init__(self, start_date="2020-01-01", end_date=None):
+# class YieldCurve:
+#     def __init__(self, start_date="2020-01-01", end_date=None):
     
-        self.maturities = ['DGS1MO', 'DGS3MO', 'DGS6MO', 'DGS1', 'DGS2', 'DGS3', 'DGS5', 'DGS7', 'DGS10', 'DGS20', 'DGS30']
-        self.source = 'fred'
-        self.start_date = start_date
-        self.end_date = end_date if end_date else dt.datetime.today().strftime("%Y-%m-%d")
+#         self.maturities = ['DGS1MO', 'DGS3MO', 'DGS6MO', 'DGS1', 'DGS2', 'DGS3', 'DGS5', 'DGS7', 'DGS10', 'DGS20', 'DGS30']
+#         self.source = 'fred'
+#         self.start_date = start_date
+#         self.end_date = end_date if end_date else dt.datetime.today().strftime("%Y-%m-%d")
 
-        self.data = self.fetch_yield_curve()
+#         self.data = self.fetch_yield_curve()
     
 
-    def fetch_yield_curve(self):
-        """get treasury rate for fixed maturity bonds (rates are market-implied )"""
+#     def fetch_yield_curve(self):
+#         """get treasury rate for fixed maturity bonds (rates are market-implied )"""
 
-        data = web.DataReader(self.maturities, self.source, self.start_date, self.end_date)
-        data.dropna(inplace=True)
+#         data = web.DataReader(self.maturities, self.source, self.start_date, self.end_date)
+#         data.dropna(inplace=True)
     
    
-        latest_yields = data.iloc[-1].to_dict() 
+#         latest_yields = data.iloc[-1].to_dict() 
 
-        maturity_mapping = {
-            'DGS1MO': 1/12, 'DGS3MO': 3/12, 'DGS6MO': 6/12, 'DGS1': 1,
-            'DGS2': 2, 'DGS3': 3, 'DGS5': 5, 'DGS7': 7, 'DGS10': 10, 'DGS20': 20, 'DGS30': 30
-        }
+#         maturity_mapping = {
+#             'DGS1MO': 1/12, 'DGS3MO': 3/12, 'DGS6MO': 6/12, 'DGS1': 1,
+#             'DGS2': 2, 'DGS3': 3, 'DGS5': 5, 'DGS7': 7, 'DGS10': 10, 'DGS20': 20, 'DGS30': 30
+#         }
 
-        market_yields = {maturity_mapping[k]: v/100 for k, v in latest_yields.items() if k in maturity_mapping}
-        print("\nMarket Yields (Par Rates from FRED):")
-        for m, y in market_yields.items():
-            print(f"{m} years: {y:.4%}")
-        # maturities = sorted(market_yields.keys()) 
-        return market_yields
+#         market_yields = {maturity_mapping[k]: v/100 for k, v in latest_yields.items() if k in maturity_mapping}
+#         print("\nMarket Yields (Par Rates from FRED):")
+#         for m, y in market_yields.items():
+#             print(f"{m} years: {y:.4%}")
+#         # maturities = sorted(market_yields.keys()) 
+#         return market_yields
 
-    def plot_yield_curve(self, date=None):
-        """Plots the yield curve for a specific date (default is the latest available)."""
+#     def plot_yield_curve(self, date=None):
+#         """Plots the yield curve for a specific date (default is the latest available)."""
 
-        if date is None:
-            date = self.data.index[-1]  # Use the latest available date
-        elif date not in self.data.index:
-            print(f"No data available for {date}. Using the latest available data.")
-            date = self.data.index[-1]
+#         if date is None:
+#             date = self.data.index[-1]  # Use the latest available date
+#         elif date not in self.data.index:
+#             print(f"No data available for {date}. Using the latest available data.")
+#             date = self.data.index[-1]
 
-        yields = self.data.loc[date, self.maturities].values
-        maturities_labels = ["1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "20Y", "30Y"]
+#         yields = self.data.loc[date, self.maturities].values
+#         maturities_labels = ["1M", "3M", "6M", "1Y", "2Y", "3Y", "5Y", "7Y", "10Y", "20Y", "30Y"]
 
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=maturities_labels, y=yields, mode='lines+markers', name=f'Yield Curve on {date.date()}'))
+#         fig = go.Figure()
+#         fig.add_trace(go.Scatter(x=maturities_labels, y=yields, mode='lines+markers', name=f'Yield Curve on {date.date()}'))
 
-        fig.update_layout(title="US Treasury Yield Curve",
-                          xaxis_title="Maturity",
-                          yaxis_title="Yield (%)",
-                          template="plotly_dark")
+#         fig.update_layout(title="US Treasury Yield Curve",
+#                           xaxis_title="Maturity",
+#                           yaxis_title="Yield (%)",
+#                           template="plotly_dark")
 
-        fig.show()
+#         fig.show()
 
-    def plot_time_series(self, maturities=None):
-        """Plots the time-series of selected maturities over time."""
-        if maturities is None:
-            maturities = ['DGS2', 'DGS5', 'DGS10', 'DGS30'] 
+#     def plot_time_series(self, maturities=None):
+#         """Plots the time-series of selected maturities over time."""
+#         if maturities is None:
+#             maturities = ['DGS2', 'DGS5', 'DGS10', 'DGS30'] 
 
-        fig = go.Figure()
-        for mat in maturities:
-            if mat in self.data.columns:
-                fig.add_trace(go.Scatter(x=self.data.index, y=self.data[mat], mode='lines', name=mat))
+#         fig = go.Figure()
+#         for mat in maturities:
+#             if mat in self.data.columns:
+#                 fig.add_trace(go.Scatter(x=self.data.index, y=self.data[mat], mode='lines', name=mat))
 
-        fig.update_layout(title="US Treasury Yields Over Time",
-                          xaxis_title="Date",
-                          yaxis_title="Yield (%)",
-                          template="plotly_dark")
+#         fig.update_layout(title="US Treasury Yields Over Time",
+#                           xaxis_title="Date",
+#                           yaxis_title="Yield (%)",
+#                           template="plotly_dark")
         
 
 
-        fig.show()
+#         fig.show()
 
     
   
@@ -90,15 +96,9 @@ def Zero_Curve( market_yields, compounding= 'semi-annual'): # for than need boot
 
         """construct a zero-coupon curve from PAR-like rates  (prices of coupon-bearing products)"""
 
-        compounding_map = {
-        'annual': 1,
-        'semi-annual': 2,
-        'quarterly': 4,
-        'monthly': 12,
-        'continuous': None  
-        }
+       
         
-        freq = compounding_map.get(compounding, 2)  
+        freq = COMPOUNDING_MAP.get(compounding, 2)  
 
         maturities = sorted(market_yields.keys())
         zero_rates = {}  
@@ -204,7 +204,7 @@ def fixedLegCashflows(notional, fixed_rate, payment_dates, day_count_convention=
 
 
 
-def floatingLegCashflows(notional, zero_curve, reset_dates,floating_spread=0.0 ,day_count_convention="30/360"):
+def floatingLegCashflows(notional, zero_curve, reset_dates,day_count_convention="30/360"):
 
     cashflows = []
 
@@ -228,7 +228,7 @@ def floatingLegCashflows(notional, zero_curve, reset_dates,floating_spread=0.0 ,
 
         forward_rate = interp_fwd(T1) / 100  
         print("Interpolated Forward Rate:", forward_rate)
-        floating_rate = forward_rate + floating_spread  
+        floating_rate = forward_rate  
         cashflow = notional * floating_rate * day_count_fraction
         print("Computed Cashflow:", cashflow)
 
@@ -238,81 +238,47 @@ def floatingLegCashflows(notional, zero_curve, reset_dates,floating_spread=0.0 ,
     return pd.DataFrame(cashflows)
     
 
-
-
-
-
-# def get_discout_factor(spot_rates, maturities):
-#     return [1 / ((1 + rate) ** t) for rate, t in zip(spot_rates, maturities)]
-
-
-
-
+def compute_discount_factors(zero_rates, maturities, compounding='semi-annual'):
+    """Computes discount factors from zero rates."""
     
+    freq = COMPOUNDING_MAP.get(compounding, 2)
+    discount_factors = {}
 
+    for T in maturities:
+        if compounding == 'continuous':
+            discount_factors[T] = np.exp(-zero_rates[T] * T)
+        else:
+            discount_factors[T] = (1 + zero_rates[T] / freq) ** (-T * freq)
+    
+    return discount_factors
 
-
-
-
-"""
-fixed_leg_cashflows(notional, fixed_rate, payment_dates, day_count_convention)
-floating_leg_cashflows(notional, floating_index, reset_dates, forward_curve, day_count_convention)	
-discount_cashflows(cashflows, discount_factors)
-
-compute_swap_NPV(fixed_leg, floating_leg, discount_factors).
-calculate_par_swap_rate(discount_factors, floating_leg_dates, fixed_leg_dates)
-calculate_DV01(fixed_leg, discount_factors)
-#sensitivities:
-
-calculate_PV01(fi
-xed_leg, discount_factors)	Computes PV01 (the price value of a 1 basis point change in rates).
-compute_IR_Delta(swap_price, shocked_rates)	Computes interest rate delta (how swap value changes with rates).
-calculate_convexity_adjustment()
-
-vis & reporting :
-plot_yield_curve(yield_curve_data)	Plots the yield curve (zero rates, forward rates, etc.).
-plot_cashflows(fixed_leg, floating_leg)	Visualizes swap cash flows over time.
-generate_swap_report(swap_details, npv, risk_metrics)
+def price_swap(fixed_leg, floating_leg, discount_factors):
+    """
+    Computes NPV of the swap.
+    fixed_leg: Df with fixed leg cashflows
+    floating_leg: Df with floating leg cashflows
+    discount_factors:  for PV computation
     """
 
+    fixed_pv = sum(row["Fixed Cashflow"] * discount_factors[row["Payment Date"].year] for _, row in fixed_leg.iterrows())
 
 
+    floating_pv = sum(row["Floating Cashflow"] * discount_factors[row["Payment Date"].year] for _, row in floating_leg.iterrows())
 
+    npv = fixed_pv - floating_pv
 
-def main():
-    # parser = argparse.ArgumentParser(description="Run different functions for the swap pricing tool.")
-    
-    # parser.add_argument("function", choices=FUNCTION_MAP.keys(), help="Function to execute")
-    
-    # parser.add_argument("--source", type=str, default="fred", help="Data source for yield curve")
-    # parser.add_argument("--timeframe", type=str, default="DGS1", help="constant maturity Treasury yield")
-
-
-    # args = parser.parse_args()
-
-    # result = FUNCTION_MAP[args.function](**vars(args))
-    
-
-
-    # yc = YieldCurve()
-    # market_yields= yc.data
-
-    # zero_curve =Zero_Curve(market_yields)
-
-    # print("\nBootstrapped Zero Curve (From Par Rates):")
-    # for m, z in zero_curve.items():
-    #     print(f"{m} years: {z:.4%}")
-
-
-    return
+    return npv
 
     
+def compute_DV01(fixed_leg, discount_factors, bump=0.0001):
+    """
+    Computes the DV01 (Dollar Value of 1 Basis Point). Bumps the discount curve by 1bp and computes change in PV.
+    """
+    bumped_discount_factors = {T: df * np.exp(-bump * T) for T, df in discount_factors.items()}
+
+    fixed_pv_original = sum(row["Fixed Cashflow"] * discount_factors[row["Payment Date"].year] for _, row in fixed_leg.iterrows())
+    fixed_pv_bumped = sum(row["Fixed Cashflow"] * bumped_discount_factors[row["Payment Date"].year] for _, row in fixed_leg.iterrows())
+
+    return fixed_pv_original - fixed_pv_bumped
 
 
-
-    
-
-    
-
-if __name__ == "__main__":
-    main()
